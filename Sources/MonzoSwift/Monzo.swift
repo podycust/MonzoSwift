@@ -142,6 +142,58 @@ public class Monzo {
         }
     }
     
+    // MARK: - Pots
+    /// Get all pots associated with a Monzo Account
+    ///
+    /// - Parameters:
+    ///   - account: The account to fetch transactions for
+    ///   - callback: Response from monzo, either an error or list of MonzoTransaction
+    public func getPots(for account: MonzoAccount, callback: @escaping (_ transactions: Either<Error, [MonzoPots]>) -> Void){
+        guard accessToken != nil else {
+            callback(Either.error(MonzoError.noAccessToken))
+            return
+        }
+        
+        let url = apiBase + "/pots?account_id=\(account.id)"
+        Network.request(url: URL(string: url)!, headers: defaultHeaders) { (response) in
+            switch response {
+            case .result(let result):
+                guard let transactions = self.extractField("pots", from: result) else {
+                    callback(Either.error(MonzoError.decodingError))
+                    return
+                }
+                self.parseJSON(to: Array<MonzoTransaction>.self, from: transactions, then: callback)
+            case .error(let error):
+                callback(Either.error(error))
+            }
+        }
+    }
+    /// Get a specific pot associated with a Monzo Account
+    ///
+    /// - Parameters:
+    ///   - id: pot ID
+    ///   - callback: Response from Monzo, either an error or a Monzo Transaction
+    public func getPot(for id: String, callback: @escaping ((Either<Error, MonzoPots>) -> Void)){
+        guard accessToken != nil else {
+            callback(Either.error(MonzoError.noAccessToken))
+            return
+        }
+        
+        let url = apiBase + "/pots/\(id)"
+        Network.request(url: URL(string: url)!, headers: defaultHeaders) { (response) in
+            switch response {
+            case .result(let result):
+                guard let transaction = self.extractField("transaction", from: result) else {
+                    callback(Either.error(MonzoError.decodingError))
+                    return
+                }
+                self.parseJSON(to: MonzoTransaction.self, from: transaction, then: callback)
+            case .error(let error):
+                callback(Either.error(error))
+            }
+        }
+    }
+    
     /// Get a specific transaction associated with a Monzo Account
     ///
     /// - Parameters:
